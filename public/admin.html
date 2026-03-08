@@ -8,6 +8,14 @@
 </head>
 <body>
   <h2>Все заявки</h2>
+
+  <div>
+    <label>Поиск по имени:</label>
+    <input type="text" id="searchInput" oninput="loadBookings()">
+    <label>Фильтр по дате:</label>
+    <input type="date" id="filterDate" onchange="loadBookings()">
+  </div>
+
   <table id="bookingsTable">
     <thead>
       <tr>
@@ -16,6 +24,7 @@
         <th>Дата</th>
         <th>Время</th>
         <th>Комментарий</th>
+        <th>Действия</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -24,7 +33,18 @@
   <script>
     async function loadBookings() {
       const response = await fetch('/api/bookings');
-      const bookings = await response.json();
+      let bookings = await response.json();
+
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const filterDate = document.getElementById('filterDate').value;
+
+      if (search) {
+        bookings = bookings.filter(b => b.name.toLowerCase().includes(search));
+      }
+      if (filterDate) {
+        bookings = bookings.filter(b => b.date === filterDate);
+      }
+
       const tbody = document.querySelector('#bookingsTable tbody');
       tbody.innerHTML = '';
       bookings.forEach(b => {
@@ -35,10 +55,24 @@
           <td>${b.date}</td>
           <td>${b.time}</td>
           <td>${b.comment}</td>
+          <td><button onclick="deleteBooking(${b.id})">Удалить</button></td>
         `;
         tbody.appendChild(row);
       });
     }
+
+    async function deleteBooking(id) {
+      if (!confirm('Вы точно хотите удалить эту заявку?')) return;
+
+      const res = await fetch(`/api/bookings/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        alert('Заявка удалена');
+        loadBookings();
+      } else {
+        alert('Ошибка при удалении');
+      }
+    }
+
     loadBookings();
   </script>
 </body>
