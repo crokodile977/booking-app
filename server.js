@@ -78,9 +78,18 @@ app.delete('/api/bookings/:id', (req, res) => {
       }
     );
   });
+
+app.get('/api/deleted_bookings', (req, res) => {
+  db.all('SELECT * FROM deleted_bookings ORDER BY deleted_at DESC', [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+  
 });
 
 // Запуск сервера
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
+
