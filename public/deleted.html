@@ -1,52 +1,107 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Удалённые заявки</title>
-  <link rel="stylesheet" href="style.css">
+
+<meta charset="UTF-8">
+
+<title>Удалённые заявки</title>
+
+<link rel="stylesheet" href="style.css">
+
 </head>
+
 <body>
-  <h2>Удалённые заявки</h2>
 
-  <button onclick="window.location.href='admin.html'">Назад к активным заявкам</button>
+<h2>Удалённые заявки</h2>
 
-  <table id="deletedTable">
-    <thead>
-      <tr>
-        <th>Имя</th>
-        <th>Контакт</th>
-        <th>Дата</th>
-        <th>Время</th>
-        <th>Комментарий</th>
-        <th>Дата удаления</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<button onclick="window.location.href='admin.html'">
+Назад
+</button>
 
-  <script>
-    async function loadDeletedBookings() {
-      const response = await fetch('/api/deleted_bookings');
-      const bookings = await response.json();
+<table id="deletedTable">
 
-      const tbody = document.querySelector('#deletedTable tbody');
-      tbody.innerHTML = '';
-      bookings.forEach(b => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${b.name}</td>
-          <td>${b.contact}</td>
-          <td>${b.date}</td>
-          <td>${b.time}</td>
-          <td>${b.comment}</td>
-          <td>${b.deleted_at}</td>
-        `;
-        tbody.appendChild(row);
-      });
-    }
+<thead>
 
-    loadDeletedBookings();
-  </script>
+<tr>
+
+<th>Имя</th>
+<th>Контакт</th>
+<th>Дата</th>
+<th>Время</th>
+<th>Комментарий</th>
+<th>Удалено</th>
+<th>Действие</th>
+
+</tr>
+
+</thead>
+
+<tbody></tbody>
+
+</table>
+
+<script>
+
+async function loadDeleted(){
+
+const response = await fetch('/api/deleted_bookings')
+
+const bookings = await response.json()
+
+const tbody = document.querySelector('#deletedTable tbody')
+
+tbody.innerHTML=''
+
+bookings.forEach(b=>{
+
+const row=document.createElement('tr')
+
+row.innerHTML=`
+
+<td>${b.name}</td>
+<td>${b.contact}</td>
+<td>${b.date}</td>
+<td>${b.time}</td>
+<td>${b.comment}</td>
+<td>${b.deleted_at}</td>
+
+<td>
+
+<button onclick="restore(${b.id})">
+Восстановить
+</button>
+
+</td>
+
+`
+
+tbody.appendChild(row)
+
+})
+
+}
+
+async function restore(id){
+
+if(!confirm('Восстановить заявку?')) return
+
+const res = await fetch('/api/restore/'+id,{method:'POST'})
+
+if(res.ok){
+
+alert('Заявка восстановлена')
+
+loadDeleted()
+
+}
+
+}
+
+loadDeleted()
+
+</script>
+
 </body>
+
 </html>
