@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Заявки для исполнителя</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h2>Все заявки</h2>
+  <table id="bookingsTable">
+    <thead>
+      <tr>
+        <th>Имя</th>
+        <th>Контакт</th>
+        <th>Дата</th>
+        <th>Время</th>
+        <th>Комментарий</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    async function loadBookings() {
+      const response = await fetch('/api/bookings');
+      const bookings = await response.json();
+      const tbody = document.querySelector('#bookingsTable tbody');
+      tbody.innerHTML = '';
+      bookings.forEach(b => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${b.name}</td>
+          <td>${b.contact}</td>
+          <td>${b.date}</td>
+          <td>${b.time}</td>
+          <td>${b.comment}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+    loadBookings();
+  </script>
+</body>
+</html>

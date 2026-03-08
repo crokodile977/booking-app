@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Запись на услуги</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h2>Запись на услугу</h2>
+  <form id="bookingForm">
+    <label>Имя:</label>
+    <input type="text" id="name" required>
+
+    <label>Контакт:</label>
+    <input type="text" id="contact" required>
+
+    <label>Дата:</label>
+    <input type="date" id="date" required>
+
+    <label>Время:</label>
+    <input type="time" id="time" required>
+
+    <label>Комментарий:</label>
+    <textarea id="comment" rows="3"></textarea>
+
+    <button type="submit">Записаться</button>
+  </form>
+
+  <script src="script.js"></script>
+</body>
+</html>
