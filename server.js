@@ -12,7 +12,7 @@ const db = new sqlite3.Database('./database.sqlite', (err) => {
   else console.log('Connected to SQLite database.');
 });
 
-// Создаем таблицу, если её нет
+// Создание таблиц
 db.run(`CREATE TABLE IF NOT EXISTS bookings (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT,
@@ -20,6 +20,16 @@ db.run(`CREATE TABLE IF NOT EXISTS bookings (
   date TEXT,
   time TEXT,
   comment TEXT
+)`);
+
+db.run(`CREATE TABLE IF NOT EXISTS deleted_bookings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT,
+  contact TEXT,
+  date TEXT,
+  time TEXT,
+  comment TEXT,
+  deleted_at TEXT
 )`);
 
 // Настройка сервера
@@ -45,6 +55,29 @@ app.post('/api/bookings', (req, res) => {
       res.json({ id: this.lastID });
     }
   );
+});
+
+// Удаление заявки с переносом в deleted_bookings
+app.delete('/api/bookings/:id', (req, res) => {
+  const bookingId = req.params.id;
+
+  db.get('SELECT * FROM bookings WHERE id = ?', [bookingId], (err, row) => {
+    if (err || !row) return res.status(404).json({ error: 'Заявка не найдена' });
+
+    const now = new Date().toISOString();
+    db.run(
+      'INSERT INTO deleted_bookings (name, contact, date, time, comment, deleted_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [row.name, row.contact, row.date, row.time, row.comment, now],
+      (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        db.run('DELETE FROM bookings WHERE id = ?', [bookingId], (err) => {
+          if (err) return res.status(500).json({ error: err.message });
+          res.json({ success: true });
+        });
+      }
+    );
+  });
 });
 
 // Запуск сервера
