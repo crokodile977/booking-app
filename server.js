@@ -1,123 +1,221 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const express = require("express")
+const sqlite3 = require("sqlite3").verbose()
+const bodyParser = require("body-parser")
+const path = require("path")
 
-const app = express();
-const PORT = 3000;
+const app = express()
+const PORT = 3000
 
-const db = new sqlite3.Database('./database.sqlite', (err) => {
-  if (err) console.error(err.message);
-  else console.log('Connected to SQLite database.');
-});
+app.use(bodyParser.json())
+app.use(express.static("public"))
 
-db.run(`CREATE TABLE IF NOT EXISTS bookings (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT,
-  contact TEXT,
-  date TEXT,
-  time TEXT,
-  comment TEXT
-)`);
+const db = new sqlite3.Database("database.db")
 
-db.run(`CREATE TABLE IF NOT EXISTS deleted_bookings (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT,
-  contact TEXT,
-  date TEXT,
-  time TEXT,
-  comment TEXT,
-  deleted_at TEXT
-)`);
+// Основная таблица заявок
+db.run(`
+CREATE TABLE IF NOT EXISTS bookings (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+name TEXT,
+phone TEXT,
+date TEXT,
+time TEXT,
+comment TEXT
+)
+`)
 
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'public')));
+// Таблица удаленных заявок
+db.run(`
+CREATE TABLE IF NOT EXISTS deleted_bookings (
+id INTEGER PRIMARY KEY,
+name TEXT,
+phone TEXT,
+date TEXT,
+time TEXT,
+comment TEXT
+)
+`)
 
-app.get('/api/bookings', (req, res) => {
-  db.all('SELECT * FROM bookings ORDER BY date, time', [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
-});
+// Настройки графика
+db.run(`
+CREATE TABLE IF NOT EXISTS settings (
+id INTEGER PRIMARY KEY,
+start_hour INTEGER,
+end_hour INTEGER,
+work_days TEXT
+)
+`)
 
-app.get('/api/deleted_bookings', (req, res) => {
-  db.all('SELECT * FROM deleted_bookings ORDER BY deleted_at DESC', [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
-});
+// создаём настройки если их нет
+db.get("SELECT * FROM settings WHERE id=1",(err,row)=>{
 
-app.post('/api/bookings', (req, res) => {
-  const { name, contact, date, time, comment } = req.body;
+if(!row){
 
-  db.run(
-    'INSERT INTO bookings (name, contact, date, time, comment) VALUES (?, ?, ?, ?, ?)',
-    [name, contact, date, time, comment],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ id: this.lastID });
-    }
-  );
-});
+db.run(
+"INSERT INTO settings (id,start_hour,end_hour,work_days) VALUES (1,9,18,'1,2,3,4,5')"
+)
 
-app.delete('/api/bookings/:id', (req, res) => {
+}
 
-  const id = req.params.id;
+})
 
-  db.get('SELECT * FROM bookings WHERE id = ?', [id], (err, row) => {
+// получить все заявки
+app.get("/api/bookings",(req,res)=>{
 
-    if (err || !row) return res.status(404).json({ error: 'Not found' });
+db.all("SELECT * FROM bookings",(err,rows)=>{
 
-    const now = new Date().toISOString();
+res.json(rows)
 
-    db.run(
-      'INSERT INTO deleted_bookings (name, contact, date, time, comment, deleted_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [row.name, row.contact, row.date, row.time, row.comment, now],
-      (err) => {
+})
 
-        if (err) return res.status(500).json({ error: err.message });
+})
 
-        db.run('DELETE FROM bookings WHERE id = ?', [id], (err) => {
+// создать заявку
+app.post("/api/bookings",(req,res)=>{
 
-          if (err) return res.status(500).json({ error: err.message });
+const {name,phone,date,time,comment}=req.body
 
-          res.json({ success: true });
+db.get(
 
-        });
+"SELECT * FROM bookings WHERE date=? AND time=?",
 
-      }
-    );
-  });
-});
+[date,time],
 
-app.post('/api/restore/:id', (req, res) => {
+(err,row)=>{
 
-  const id = req.params.id;
+if(row){
 
-  db.get('SELECT * FROM deleted_bookings WHERE id = ?', [id], (err, row) => {
+return res.status(400).json({error:"Время занято"})
 
-    if (err || !row) return res.status(404).json({ error: 'Not found' });
+}
 
-    db.run(
-      'INSERT INTO bookings (name, contact, date, time, comment) VALUES (?, ?, ?, ?, ?)',
-      [row.name, row.contact, row.date, row.time, row.comment],
-      (err) => {
+db.run(
 
-        if (err) return res.status(500).json({ error: err.message });
+"INSERT INTO bookings (name,phone,date,time,comment) VALUES (?,?,?,?,?)",
 
-        db.run('DELETE FROM deleted_bookings WHERE id = ?', [id], (err) => {
+[name,phone,date,time,comment],
 
-          if (err) return res.status(500).json({ error: err.message });
+function(){
 
-          res.json({ success: true });
+res.json({id:this.lastID})
 
-        });
+}
 
-      }
-    );
-  });
-});
+)
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+})
+
+})
+
+// удалить заявку (в архив)
+app.delete("/api/bookings/:id",(req,res)=>{
+
+const id=req.params.id
+
+db.get("SELECT * FROM bookings WHERE id=?",[id],(err,row)=>{
+
+if(!row) return res.json({error:"not found"})
+
+db.run(
+
+"INSERT INTO deleted_bookings (id,name,phone,date,time,comment) VALUES (?,?,?,?,?,?)",
+
+[row.id,row.name,row.phone,row.date,row.time,row.comment]
+
+)
+
+db.run("DELETE FROM bookings WHERE id=?",[id])
+
+res.json({success:true})
+
+})
+
+})
+
+// получить удаленные
+app.get("/api/deleted",(req,res)=>{
+
+db.all("SELECT * FROM deleted_bookings",(err,rows)=>{
+
+res.json(rows)
+
+})
+
+})
+
+// восстановить
+app.post("/api/restore/:id",(req,res)=>{
+
+const id=req.params.id
+
+db.get("SELECT * FROM deleted_bookings WHERE id=?",[id],(err,row)=>{
+
+db.run(
+
+"INSERT INTO bookings (name,phone,date,time,comment) VALUES (?,?,?,?,?)",
+
+[row.name,row.phone,row.date,row.time,row.comment]
+
+)
+
+db.run("DELETE FROM deleted_bookings WHERE id=?",[id])
+
+res.json({success:true})
+
+})
+
+})
+
+// удалить навсегда
+app.delete("/api/deleted/:id",(req,res)=>{
+
+const id=req.params.id
+
+db.run(
+
+"DELETE FROM deleted_bookings WHERE id=?",
+
+[id],
+
+()=>{
+
+res.json({success:true})
+
+}
+
+)
+
+})
+
+// получить настройки
+app.get("/api/settings",(req,res)=>{
+
+db.get("SELECT * FROM settings WHERE id=1",(err,row)=>{
+
+res.json(row)
+
+})
+
+})
+
+// изменить настройки
+app.post("/api/settings",(req,res)=>{
+
+const {start,end,days}=req.body
+
+db.run(
+
+"UPDATE settings SET start_hour=?, end_hour=?, work_days=? WHERE id=1",
+
+[start,end,days]
+
+)
+
+res.json({success:true})
+
+})
+
+app.listen(PORT,()=>{
+
+console.log("Server started")
+
+})
