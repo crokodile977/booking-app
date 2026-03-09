@@ -3,7 +3,7 @@
 
 <head>
 
-<title>Онлайн запись</title>
+<title>Запись</title>
 <link rel="stylesheet" href="style.css">
 
 </head>
@@ -22,7 +22,7 @@
 <select id="service"></select>
 
 <label>Дата</label>
-<input type="date" id="date">
+<input type="date" id="date" required>
 
 <label>Время</label>
 <select id="time"></select>
@@ -48,9 +48,7 @@ tomorrow.setDate(tomorrow.getDate()+1)
 dateInput.min=tomorrow.toISOString().split("T")[0]
 
 comment.addEventListener("input",()=>{
-
 counter.textContent=comment.value.length+" / 300"
-
 })
 
 async function loadServices(){
@@ -59,14 +57,10 @@ const res=await fetch("/api/services")
 const services=await res.json()
 
 services.forEach(s=>{
-
 const option=document.createElement("option")
-
 option.value=s.name
 option.textContent=s.name
-
 serviceSelect.appendChild(option)
-
 })
 
 }
@@ -92,27 +86,21 @@ timeSelect.appendChild(option)
 async function checkBusy(){
 
 const date=dateInput.value
-
 if(!date) return
 
 const res=await fetch("/api/busy?date="+date)
-
 const busy=await res.json()
 
 const options=[...timeSelect.options]
 
-options.forEach(o=>{
-
-o.disabled=false
+options.forEach(o=>o.disabled=false)
 
 busy.forEach(b=>{
 
-if(b.time===o.value){
-
+options.forEach(o=>{
+if(o.value===b.time){
 o.disabled=true
-
 }
-
 })
 
 })
@@ -145,13 +133,9 @@ body:JSON.stringify(data)
 })
 
 if(res.ok){
-
 alert("Запись создана")
-
 }else{
-
-alert("Время занято")
-
+alert("Это время занято")
 }
 
 }
