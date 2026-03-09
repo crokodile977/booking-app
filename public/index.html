@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 
-<title>Запись</title>
+<title>Онлайн запись</title>
 <link rel="stylesheet" href="style.css">
 
 </head>
@@ -17,13 +18,16 @@
 
 <input id="phone" placeholder="Телефон" required>
 
+<label>Услуга</label>
+<select id="service"></select>
+
 <label>Дата</label>
-<input type="date" id="date" required>
+<input type="date" id="date">
 
 <label>Время</label>
 <select id="time"></select>
 
-<textarea id="comment" placeholder="Комментарий" maxlength="300"></textarea>
+<textarea id="comment" maxlength="300" placeholder="Комментарий"></textarea>
 
 <div id="counter">0 / 300</div>
 
@@ -35,22 +39,38 @@
 
 const dateInput=document.getElementById("date")
 const timeSelect=document.getElementById("time")
+const serviceSelect=document.getElementById("service")
 const comment=document.getElementById("comment")
 const counter=document.getElementById("counter")
 
-// запрет прошлой и текущей даты
 const tomorrow=new Date()
 tomorrow.setDate(tomorrow.getDate()+1)
 dateInput.min=tomorrow.toISOString().split("T")[0]
 
-// счётчик комментария
 comment.addEventListener("input",()=>{
 
 counter.textContent=comment.value.length+" / 300"
 
 })
 
-// загрузка настроек
+async function loadServices(){
+
+const res=await fetch("/api/services")
+const services=await res.json()
+
+services.forEach(s=>{
+
+const option=document.createElement("option")
+
+option.value=s.name
+option.textContent=s.name
+
+serviceSelect.appendChild(option)
+
+})
+
+}
+
 async function loadSettings(){
 
 const res=await fetch("/api/settings")
@@ -69,17 +89,47 @@ timeSelect.appendChild(option)
 
 }
 
-loadSettings()
+async function checkBusy(){
 
-// отправка формы
+const date=dateInput.value
+
+if(!date) return
+
+const res=await fetch("/api/busy?date="+date)
+
+const busy=await res.json()
+
+const options=[...timeSelect.options]
+
+options.forEach(o=>{
+
+o.disabled=false
+
+busy.forEach(b=>{
+
+if(b.time===o.value){
+
+o.disabled=true
+
+}
+
+})
+
+})
+
+}
+
+dateInput.addEventListener("change",checkBusy)
+
 document.getElementById("form").onsubmit=async(e)=>{
 
 e.preventDefault()
 
 const data={
 
-name:document.getElementById("name").value,
-phone:document.getElementById("phone").value,
+name:name.value,
+phone:phone.value,
+service:serviceSelect.value,
 date:dateInput.value,
 time:timeSelect.value,
 comment:comment.value
@@ -100,11 +150,14 @@ alert("Запись создана")
 
 }else{
 
-alert("Это время занято")
+alert("Время занято")
 
 }
 
 }
+
+loadServices()
+loadSettings()
 
 </script>
 
