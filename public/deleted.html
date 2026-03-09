@@ -2,81 +2,63 @@
 <html>
 
 <head>
-
-<meta charset="UTF-8">
-
-<title>Удалённые заявки</title>
-
+<title>Удаленные</title>
 <link rel="stylesheet" href="style.css">
-
 </head>
 
 <body>
 
-<h2>Удалённые заявки</h2>
+<h2>Удаленные заявки</h2>
 
-<button onclick="window.location.href='admin.html'">
-Назад
-</button>
+<a href="admin.html">Назад</a>
 
-<table id="deletedTable">
+<table>
 
 <thead>
 
 <tr>
-
 <th>Имя</th>
-<th>Контакт</th>
+<th>Телефон</th>
 <th>Дата</th>
 <th>Время</th>
-<th>Комментарий</th>
-<th>Удалено</th>
-<th>Действие</th>
-
+<th></th>
+<th></th>
 </tr>
 
 </thead>
 
-<tbody></tbody>
+<tbody id="table"></tbody>
 
 </table>
 
 <script>
 
-async function loadDeleted(){
+async function load(){
 
-const response = await fetch('/api/deleted_bookings')
+const res=await fetch("/api/deleted")
+const data=await res.json()
 
-const bookings = await response.json()
+const table=document.getElementById("table")
+table.innerHTML=""
 
-const tbody = document.querySelector('#deletedTable tbody')
+data.forEach(b=>{
 
-tbody.innerHTML=''
+const tr=document.createElement("tr")
 
-bookings.forEach(b=>{
-
-const row=document.createElement('tr')
-
-row.innerHTML=`
+tr.innerHTML=`
 
 <td>${b.name}</td>
-<td>${b.contact}</td>
+<td>${b.phone}</td>
 <td>${b.date}</td>
 <td>${b.time}</td>
-<td>${b.comment}</td>
-<td>${b.deleted_at}</td>
 
-<td>
+<td><button onclick="restore(${b.id})">Восстановить</button></td>
 
-<button onclick="restore(${b.id})">
-Восстановить
-</button>
-
-</td>
+<td><button onclick="deleteForever(${b.id})">Удалить навсегда</button></td>
 
 `
 
-tbody.appendChild(row)
+table.appendChild(tr)
 
 })
 
@@ -84,24 +66,23 @@ tbody.appendChild(row)
 
 async function restore(id){
 
-if(!confirm('Восстановить заявку?')) return
-
-const res = await fetch('/api/restore/'+id,{method:'POST'})
-
-if(res.ok){
-
-alert('Заявка восстановлена')
-
-loadDeleted()
+await fetch("/api/restore/"+id,{method:"POST"})
+load()
 
 }
 
+async function deleteForever(id){
+
+if(!confirm("Удалить навсегда?")) return
+
+await fetch("/api/deleted/"+id,{method:"DELETE"})
+load()
+
 }
 
-loadDeleted()
+load()
 
 </script>
 
 </body>
-
 </html>
