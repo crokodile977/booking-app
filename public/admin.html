@@ -1,123 +1,107 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-
-<meta charset="UTF-8">
-
-<title>Активные заявки</title>
-
+<title>Админ</title>
 <link rel="stylesheet" href="style.css">
-
 </head>
 
 <body>
 
-<h2>Активные заявки</h2>
+<h2>Заявки</h2>
 
-<button onclick="window.location.href='deleted.html'">
-Удалённые заявки
-</button>
+<a href="deleted.html">Удаленные заявки</a>
 
-<br><br>
-
-<label>Поиск по имени:</label>
-<input id="searchInput" oninput="loadBookings()">
-
-<label>Фильтр по дате:</label>
-<input type="date" id="filterDate" onchange="loadBookings()">
-
-<table id="bookingsTable">
+<table>
 
 <thead>
-
 <tr>
-
 <th>Имя</th>
-<th>Контакт</th>
+<th>Телефон</th>
 <th>Дата</th>
 <th>Время</th>
-<th>Комментарий</th>
-<th>Действие</th>
-
+<th></th>
 </tr>
-
 </thead>
 
-<tbody></tbody>
+<tbody id="table"></tbody>
 
 </table>
 
+<h2>Настройки графика</h2>
+
+<label>Начало работы</label>
+<input id="start" type="number">
+
+<label>Конец работы</label>
+<input id="end" type="number">
+
+<label>Рабочие дни (1-7 через запятую)</label>
+<input id="days">
+
+<button onclick="saveSettings()">Сохранить</button>
+
 <script>
 
-async function loadBookings(){
+async function load(){
 
-const response = await fetch('/api/bookings')
+const res=await fetch("/api/bookings")
+const data=await res.json()
 
-let bookings = await response.json()
+const table=document.getElementById("table")
+table.innerHTML=""
 
-const search = document.getElementById('searchInput').value.toLowerCase()
+data.forEach(b=>{
 
-const filterDate = document.getElementById('filterDate').value
+const tr=document.createElement("tr")
 
-if(search){
-
-bookings = bookings.filter(b => b.name.toLowerCase().includes(search))
-
-}
-
-if(filterDate){
-
-bookings = bookings.filter(b => b.date === filterDate)
-
-}
-
-const tbody = document.querySelector('#bookingsTable tbody')
-
-tbody.innerHTML=''
-
-bookings.forEach(b=>{
-
-const row=document.createElement('tr')
-
-row.innerHTML=`
+tr.innerHTML=`
 
 <td>${b.name}</td>
-<td>${b.contact}</td>
+<td>${b.phone}</td>
 <td>${b.date}</td>
 <td>${b.time}</td>
-<td>${b.comment}</td>
-<td>
-<button onclick="deleteBooking(${b.id})">Удалить</button>
-</td>
+<td><button onclick="remove(${b.id})">Удалить</button></td>
 
 `
 
-tbody.appendChild(row)
+table.appendChild(tr)
 
 })
 
 }
 
-async function deleteBooking(id){
+async function remove(id){
 
-if(!confirm('Удалить заявку?')) return
+if(!confirm("Удалить заявку?")) return
 
-const res = await fetch('/api/bookings/'+id,{method:'DELETE'})
+await fetch("/api/bookings/"+id,{method:"DELETE"})
 
-if(res.ok){
-
-alert('Удалено')
-
-loadBookings()
+load()
 
 }
 
+async function saveSettings(){
+
+const start=document.getElementById("start").value
+const end=document.getElementById("end").value
+const days=document.getElementById("days").value
+
+await fetch("/api/settings",{
+
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({start,end,days})
+
+})
+
+alert("Сохранено")
+
 }
 
-loadBookings()
+load()
 
 </script>
 
 </body>
-
 </html>
