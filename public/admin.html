@@ -8,7 +8,175 @@
 
 <body>
 
+<h2>Заявки</h2><!DOCTYPE html>
+<html>
+
+<head>
+<title>Админ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
 <h2>Заявки</h2>
+
+<a href="deleted.html">Удаленные заявки</a>
+
+<table>
+
+<thead>
+<tr>
+<th>Имя</th>
+<th>Телефон</th>
+<th>Услуга</th>
+<th>Дата</th>
+<th>Время</th>
+<th>Комментарий</th>
+<th></th>
+</tr>
+</thead>
+
+<tbody id="table"></tbody>
+
+</table>
+
+<h2>Услуги</h2>
+
+<input id="serviceName" placeholder="Название услуги">
+<button onclick="addService()">Добавить</button>
+
+<ul id="servicesList"></ul>
+
+<h2>Рабочее время</h2>
+
+<label>Начало</label>
+<input id="start" type="number">
+
+<label>Конец</label>
+<input id="end" type="number">
+
+<h3>Рабочие дни</h3>
+
+<div id="days">
+
+<label><input type="checkbox" value="1">Пн</label>
+<label><input type="checkbox" value="2">Вт</label>
+<label><input type="checkbox" value="3">Ср</label>
+<label><input type="checkbox" value="4">Чт</label>
+<label><input type="checkbox" value="5">Пт</label>
+<label><input type="checkbox" value="6">Сб</label>
+<label><input type="checkbox" value="7">Вс</label>
+
+</div>
+
+<button onclick="saveSettings()">Сохранить</button>
+
+<script>
+
+async function load(){
+
+const res=await fetch("/api/bookings")
+const data=await res.json()
+
+const table=document.getElementById("table")
+table.innerHTML=""
+
+data.forEach(b=>{
+
+const tr=document.createElement("tr")
+
+tr.innerHTML=`
+
+<td>${b.name}</td>
+<td>${b.phone}</td>
+<td>${b.service}</td>
+<td>${b.date}</td>
+<td>${b.time}</td>
+<td>${b.comment||""}</td>
+
+<td><button onclick="remove(${b.id})">Удалить</button></td>
+
+`
+
+table.appendChild(tr)
+
+})
+
+}
+
+async function remove(id){
+
+if(!confirm("Удалить заявку?")) return
+
+await fetch("/api/bookings/"+id,{method:"DELETE"})
+
+load()
+
+}
+
+async function loadServices(){
+
+const res=await fetch("/api/services")
+const services=await res.json()
+
+const list=document.getElementById("servicesList")
+list.innerHTML=""
+
+services.forEach(s=>{
+
+const li=document.createElement("li")
+li.textContent=s.name
+
+list.appendChild(li)
+
+})
+
+}
+
+async function addService(){
+
+const name=document.getElementById("serviceName").value
+
+await fetch("/api/services",{
+
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({name})
+
+})
+
+loadServices()
+
+}
+
+async function saveSettings(){
+
+const start=start.value
+const end=end.value
+
+const days=[...document.querySelectorAll("#days input:checked")]
+.map(el=>el.value)
+.join(",")
+
+await fetch("/api/settings",{
+
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({start,end,days})
+
+})
+
+alert("Сохранено")
+
+}
+
+load()
+loadServices()
+
+</script>
+
+</body>
+</html>
 
 <table>
 
@@ -167,3 +335,4 @@ loadServices()
 
 </body>
 </html>
+
