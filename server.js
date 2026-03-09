@@ -1,7 +1,6 @@
 const express = require("express")
 const sqlite3 = require("sqlite3").verbose()
 const bodyParser = require("body-parser")
-const path = require("path")
 
 const app = express()
 const PORT = 3000
@@ -11,31 +10,41 @@ app.use(express.static("public"))
 
 const db = new sqlite3.Database("database.db")
 
-// Основная таблица заявок
+// заявки
 db.run(`
 CREATE TABLE IF NOT EXISTS bookings (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 name TEXT,
 phone TEXT,
+service TEXT,
 date TEXT,
 time TEXT,
 comment TEXT
 )
 `)
 
-// Таблица удаленных заявок
+// архив
 db.run(`
 CREATE TABLE IF NOT EXISTS deleted_bookings (
 id INTEGER PRIMARY KEY,
 name TEXT,
 phone TEXT,
+service TEXT,
 date TEXT,
 time TEXT,
 comment TEXT
 )
 `)
 
-// Настройки графика
+// услуги
+db.run(`
+CREATE TABLE IF NOT EXISTS services (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+name TEXT
+)
+`)
+
+// настройки
 db.run(`
 CREATE TABLE IF NOT EXISTS settings (
 id INTEGER PRIMARY KEY,
@@ -45,7 +54,6 @@ work_days TEXT
 )
 `)
 
-// создаём настройки если их нет
 db.get("SELECT * FROM settings WHERE id=1",(err,row)=>{
 
 if(!row){
@@ -58,7 +66,9 @@ db.run(
 
 })
 
-// получить все заявки
+
+
+// получить заявки
 app.get("/api/bookings",(req,res)=>{
 
 db.all("SELECT * FROM bookings",(err,rows)=>{
@@ -69,10 +79,12 @@ res.json(rows)
 
 })
 
+
+
 // создать заявку
 app.post("/api/bookings",(req,res)=>{
 
-const {name,phone,date,time,comment}=req.body
+const {name,phone,service,date,time,comment}=req.body
 
 db.get(
 
@@ -84,15 +96,15 @@ db.get(
 
 if(row){
 
-return res.status(400).json({error:"Время занято"})
+return res.status(400).json({error:"busy"})
 
 }
 
 db.run(
 
-"INSERT INTO bookings (name,phone,date,time,comment) VALUES (?,?,?,?,?)",
+"INSERT INTO bookings (name,phone,service,date,time,comment) VALUES (?,?,?,?,?,?)",
 
-[name,phone,date,time,comment],
+[name,phone,service,date,time,comment],
 
 function(){
 
@@ -106,20 +118,20 @@ res.json({id:this.lastID})
 
 })
 
-// удалить заявку (в архив)
+
+
+// удалить заявку
 app.delete("/api/bookings/:id",(req,res)=>{
 
 const id=req.params.id
 
 db.get("SELECT * FROM bookings WHERE id=?",[id],(err,row)=>{
 
-if(!row) return res.json({error:"not found"})
-
 db.run(
 
-"INSERT INTO deleted_bookings (id,name,phone,date,time,comment) VALUES (?,?,?,?,?,?)",
+"INSERT INTO deleted_bookings (id,name,phone,service,date,time,comment) VALUES (?,?,?,?,?,?,?)",
 
-[row.id,row.name,row.phone,row.date,row.time,row.comment]
+[row.id,row.name,row.phone,row.service,row.date,row.time,row.comment]
 
 )
 
@@ -131,7 +143,9 @@ res.json({success:true})
 
 })
 
-// получить удаленные
+
+
+// архив
 app.get("/api/deleted",(req,res)=>{
 
 db.all("SELECT * FROM deleted_bookings",(err,rows)=>{
@@ -142,6 +156,8 @@ res.json(rows)
 
 })
 
+
+
 // восстановить
 app.post("/api/restore/:id",(req,res)=>{
 
@@ -151,9 +167,9 @@ db.get("SELECT * FROM deleted_bookings WHERE id=?",[id],(err,row)=>{
 
 db.run(
 
-"INSERT INTO bookings (name,phone,date,time,comment) VALUES (?,?,?,?,?)",
+"INSERT INTO bookings (name,phone,service,date,time,comment) VALUES (?,?,?,?,?,?)",
 
-[row.name,row.phone,row.date,row.time,row.comment]
+[row.name,row.phone,row.service,row.date,row.time,row.comment]
 
 )
 
@@ -165,16 +181,16 @@ res.json({success:true})
 
 })
 
+
+
 // удалить навсегда
 app.delete("/api/deleted/:id",(req,res)=>{
-
-const id=req.params.id
 
 db.run(
 
 "DELETE FROM deleted_bookings WHERE id=?",
 
-[id],
+[req.params.id],
 
 ()=>{
 
@@ -186,7 +202,67 @@ res.json({success:true})
 
 })
 
-// получить настройки
+
+
+// услуги
+app.get("/api/services",(req,res)=>{
+
+db.all("SELECT * FROM services",(err,rows)=>{
+
+res.json(rows)
+
+})
+
+})
+
+
+
+app.post("/api/services",(req,res)=>{
+
+const {name}=req.body
+
+db.run(
+
+"INSERT INTO services (name) VALUES (?)",
+
+[name],
+
+function(){
+
+res.json({id:this.lastID})
+
+}
+
+)
+
+})
+
+
+
+// занятые часы
+app.get("/api/busy",(req,res)=>{
+
+const date=req.query.date
+
+db.all(
+
+"SELECT time FROM bookings WHERE date=?",
+
+[date],
+
+(err,rows)=>{
+
+res.json(rows)
+
+}
+
+)
+
+})
+
+
+
+// настройки
 app.get("/api/settings",(req,res)=>{
 
 db.get("SELECT * FROM settings WHERE id=1",(err,row)=>{
@@ -197,7 +273,8 @@ res.json(row)
 
 })
 
-// изменить настройки
+
+
 app.post("/api/settings",(req,res)=>{
 
 const {start,end,days}=req.body
@@ -213,6 +290,8 @@ db.run(
 res.json({success:true})
 
 })
+
+
 
 app.listen(PORT,()=>{
 
